@@ -1,0 +1,7 @@
+*.*db
+*vcxproj*
+.vs/
+ipch/
+*.sln
+ReadMe.txt
+Debug/
