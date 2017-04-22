@@ -1,7 +1,4 @@
-// archiver.cpp: определяет точку входа для консольного приложения.
-//
-
-#include "stdafx.h"
+//#include "stdafx.h"
 #include <fstream>
 #include <stdio.h>
 #include <cstdlib>
@@ -64,12 +61,17 @@ int choice_mode(char* input_str, string &archive_name, string &file_name)
 	}
 	return compressing_mode;
 }
-int main()
+int main(int argc,char *argv[])
 {
+	if (argc < 2)
+	{
+		printf("Error! No parameters!\n");
+		return 1;
+	}
 	char inp[] = "--recompress file1 file2";
 	string archive_name = "";
 	string filename = "";
-	int result = choice_mode(inp, archive_name, filename);
+	int result = choice_mode(argv[1], archive_name, filename);
 	if (result == error_code)
 	{
 		return 1;
@@ -77,16 +79,16 @@ int main()
 	ifstream input_file(filename.c_str(), ios::binary | ios::in);
 	if (!input_file.is_open())
 	{
-		cout<<"Error! File "<<filename<<" not found"<<endl;
+		printf("Error! File %s not found\n",filename.c_str());
 	}
 	else
 	{
 		ofstream archive_file(archive_name.c_str(), ios::binary | ios::out);
-
+		
 		archive_file.close();
 	}
 	input_file.close();
-	system("pause");
+	//system("pause");
     return 0;
 }
 
