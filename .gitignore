@@ -5,3 +5,6 @@ ipch/
 *.sln
 ReadMe.txt
 Debug/
+*.lzwa
+*.doc*
+*.pdf

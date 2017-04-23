@@ -1,11 +1,13 @@
-//#include "stdafx.h"
 #include <fstream>
 #include <stdio.h>
 #include <cstdlib>
 #include <string>
 #include <stdlib.h>
 #include <iostream>
+#include <map>
+#include <vector>
 #define error_code 2
+#define unshort_int_max_val 65538
 using namespace std;
 int choice_mode(char* input_str, string &archive_name, string &file_name)
 {
@@ -51,7 +53,7 @@ int choice_mode(char* input_str, string &archive_name, string &file_name)
 		i++;
 	}
 	i++;
-	if (!compressing_mode)
+	if (compressing_mode)
 	{
 		while (i < input.length())
 		{
@@ -61,17 +63,57 @@ int choice_mode(char* input_str, string &archive_name, string &file_name)
 	}
 	return compressing_mode;
 }
-int main(int argc,char *argv[])
+void compress_file(ofstream &output_file, ifstream &input_file)
 {
-	if (argc < 2)
+	map<string, unsigned long int> dict;
+	// initialization dict
+	string temp = "";
+	for (unsigned char i = 0; i < 255; i++)
 	{
-		printf("Error! No parameters!\n");
-		return 1;
+		temp += i;
+		dict.insert(pair<string, unsigned long int>(temp, (unsigned long int)i));
+		temp = "";
 	}
-	char inp[] = "--recompress file1 file2";
+	temp += (unsigned char)255;
+	dict.insert(pair<string, unsigned long int>(temp, (unsigned long int)255));
+	temp = "";
+	// compressing
+	vector<unsigned short int> result;
+	unsigned long int max_code_in_dict = 255;
+	char current_symb;
+	string word = "";
+	input_file.read(&current_symb, 1); //reading first byte from file
+	word += current_symb;
+	input_file.read(&current_symb, 1); //reading second byte from file
+	while ((max_code_in_dict < unshort_int_max_val) && (!input_file.eof()))
+	{
+		if (dict.count(word+current_symb)) // if word in dict
+		{
+			word += current_symb;
+		}
+		else
+		{
+			dict.insert(pair<string, unsigned long int>((word + current_symb), ++max_code_in_dict)); // adding word to dict
+			result.push_back(dict.at(word));
+			word = current_symb;
+		}
+		input_file.read(&current_symb, 1);
+	}
+	result.push_back(dict.at(word));
+
+	for (int i = 0; i < result.size(); i++)
+	{
+		output_file.write((char*)&(result[i]), sizeof(result[i]));
+	}
+	output_file.close();
+	cout<<"Data has been compressed"<<endl;
+}
+int main()
+{
+	char inp[] = "--compress result.lzva input_file.txt";
 	string archive_name = "";
 	string filename = "";
-	int result = choice_mode(argv[1], archive_name, filename);
+	int result = choice_mode(inp, archive_name, filename);
 	if (result == error_code)
 	{
 		return 1;
@@ -79,16 +121,15 @@ int main(int argc,char *argv[])
 	ifstream input_file(filename.c_str(), ios::binary | ios::in);
 	if (!input_file.is_open())
 	{
-		printf("Error! File %s not found\n",filename.c_str());
+		cout<<"Error! File "<<filename<<" not found"<<endl;
 	}
 	else
 	{
 		ofstream archive_file(archive_name.c_str(), ios::binary | ios::out);
-		
-		archive_file.close();
+		compress_file(archive_file, input_file);
 	}
 	input_file.close();
-	//system("pause");
+//	system("pause");
     return 0;
 }
 
