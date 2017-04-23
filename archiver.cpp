@@ -134,7 +134,7 @@ vector<unsigned long int> compress_uint4(ifstream &input_file, map<string, unsig
 	result.push_back(dictionary.at(word));
 	return result;
 }
-void compress_file(ofstream &output_file, ifstream &input_file)
+unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
 	map<string, unsigned long int> dict;
 	// initialization dict
@@ -160,18 +160,39 @@ void compress_file(ofstream &output_file, ifstream &input_file)
 		used_uint4 = true;
 	}
 	unsigned long long int size_compressed_data = 2 * result_uint2.size() + (used_uint4 == true ? result_uint4.size() : 0);
-	for (unsigned long int i = 0; i < result_uint2.size(); i++)
+
+	// writing coded data to archive
+	if (size_compressed_data <= size_input_data)
 	{
-		output_file.write((char*)&(result_uint2[i]), sizeof(result_uint2[i]));
-	}
-	if (used_uint4)
-	{
-		for (unsigned long i = 0; i < result_uint4.size(); i++)
+		for (unsigned long int i = 0; i < result_uint2.size(); i++)
 		{
-			output_file.write((char*)&(result_uint4[i]), sizeof(result_uint4[i]));
+			output_file.write((char*)&(result_uint2[i]), sizeof(result_uint2[i]));
+		}
+		if (used_uint4)
+		{
+			for (unsigned long i = 0; i < result_uint4.size(); i++)
+			{
+				output_file.write((char*)&(result_uint4[i]), sizeof(result_uint4[i]));
+			}
 		}
 	}
+	else // writing non-coded data to archive
+	{
+		input_file.clear();
+		input_file.seekg(0);
+		char temp_byte;
+		input_file.read(&temp_byte, 1);
+		while (!input_file.eof())
+		{
+			output_file.write(&temp_byte, 1);
+			input_file.read(&temp_byte, 1);
+		}
+		output_file.seekp(ios::beg);
+		bool is_compressed = false;
+		output_file.write((char*)&is_compressed, sizeof(is_compressed)); // setting flag that we haven't compressing data
+	}
 	output_file.close();
+	return size_compressed_data <= size_input_data ? size_compressed_data:size_input_data;
 }
 void write_string_to_file(string &input_str, ofstream &file)
 {
@@ -182,9 +203,17 @@ void write_string_to_file(string &input_str, ofstream &file)
 		file.write(&(input_str.c_str()[i]), 1);
 	}
 }
+unsigned long int get_file_size(string filename)
+{
+		FILE *input_file = fopen(filename.c_str(), "rb");
+		fseek(input_file, 0, SEEK_END);
+		unsigned long int size_input_file = ftell(input_file);
+		fclose(input_file);
+		return size_input_file;
+}
 int main()
 {
-	char inp[] = "--compress result.lzva dm_book.pdf";
+	char inp[] = "--compress result.lzva input_file.txt";
 	string archive_name = "";
 	string filename = "";
 	mode_type mode = choice_mode(inp, archive_name, filename);
@@ -192,6 +221,8 @@ int main()
 	{
 		return 1;
 	}
+	// getting size of input file
+	unsigned long int size_input_file = get_file_size(filename);
 	ifstream input_file(filename.c_str(), ios::binary | ios::in);
 	if (!input_file.is_open())
 	{
@@ -202,10 +233,13 @@ int main()
 		if (mode == compressing)
 		{
 			ofstream archive_file(archive_name.c_str(), ios::binary | ios::out);
+			bool is_compressed = true;
+			archive_file.write((char*)&is_compressed, sizeof(is_compressed));
 			write_string_to_file(filename, archive_file);
 			printf("Starting compressing ...\n");
-			compress_file(archive_file, input_file);
+			unsigned long int size_data = compress_file(archive_file, input_file,size_input_file);
 			printf("Data have been compressed\n");
+			cout << "Size compressed part: " << size_data <<" bytes"<< endl;
 		}
 	}
 	input_file.close();
