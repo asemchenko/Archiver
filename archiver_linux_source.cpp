@@ -131,7 +131,7 @@ vector<uint32_t> compress_uint4(ifstream &input_file, map<string, uint32_t> &dic
 	result.push_back(dictionary.at(word));
 	return result;
 }
-void write_to_vector(uint64_t number, int size, vector<uint16_t> &vect)
+void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 {
 	switch (size)
 	{
@@ -161,11 +161,11 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	for (unsigned int i = 0; i < 256; i++)
 	{
 		temp += (char)i;
-		dict.insert(pair<string, uint32_t>(temp, (unsigned long int)i));
+		dict.insert(pair<string,uint32_t>(temp, (uint32_t)i));
 		temp = "";
 	}
 	// compressing
-	unsigned long int max_code_in_dict = 255;
+	uint32_t max_code_in_dict = 255;
 	//compressing using 16 bites codes
 	vector<uint16_t> result;
 	uint8_t current_symb;
@@ -173,24 +173,36 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	input_file.read((char*)&current_symb, 1); //reading first byte from file
 	word += (char)current_symb;
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
-	uint64_t code_lenght = 2;
-	while (!input_file.eof())
+	uint32_t code_lenght = 2;
+	uint32_t count_readed_bytes = 2;
+	while ((max_code_in_dict < UINT16_MAX + 1) && (!input_file.eof()))
 	{
-		if (max_code_in_dict > UINT16_MAX )
-		{
-			code_lenght = 4;
-		}
-		else if (max_code_in_dict > UINT32_MAX)
-		{
-			max_code_in_dict = 8;
-		}
 		if (dict.count(word + (char)current_symb)) // if word in dict
 		{
 			word += (char)current_symb;
 		}
 		else
 		{
-			dict.insert(pair<string, uint16_t>((word + (char)current_symb), ++max_code_in_dict)); // adding word to dict
+			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+			//cout << result.size() << endl;// adding word to dict
+			write_to_vector(dict.at(word), code_lenght, result);
+			//result.push_back(dict.at(word));
+			word = (char)current_symb;
+		}
+		input_file.read((char*)&current_symb, 1);
+		count_readed_bytes++;
+	}
+	code_lenght = 4;
+	while ((max_code_in_dict < UINT32_MAX + 1) && (!input_file.eof()))
+	{
+		if (dict.count(word + (char)current_symb)) // if word in dict
+		{
+			word += (char)current_symb;
+		}
+		else
+		{
+			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+			//cout << result.size() << endl;// adding word to dict
 			write_to_vector(dict.at(word), code_lenght, result);
 			//result.push_back(dict.at(word));
 			word = (char)current_symb;
@@ -245,7 +257,7 @@ unsigned long int get_file_size(string filename)
 }
 int main(int argvc,char* argv[])
 {
-	if (argvc > 1)
+	if (argvc  > 1)
 	{
 		char* inp = argv[1];
 		string archive_name = "";

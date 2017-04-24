@@ -212,7 +212,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 			word = (char)current_symb;
 		}
 		input_file.read((char*)&current_symb, 1);
-		count_readed_bytes++;
 	}
 	write_to_vector(dict.at(word), code_lenght, result);
 	unsigned long long int size_compressed_data = 2 * result.size();
