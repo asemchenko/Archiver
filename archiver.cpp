@@ -74,67 +74,6 @@ mode_type choice_mode(char* input_str, string &archive_name, string &file_name)
 	}
 	return compressing_mode;
 }
-vector<uint16_t> compress_uint2(ifstream &input_file, map<string, uint32_t> &dictionary, unsigned long int &max_val_in_dict)
-{
-	vector<uint16_t> result;
-	uint8_t current_symb;
-	string word = "";
-	input_file.read((char*)&current_symb, 1); //reading first byte from file
-	word += (char)current_symb;
-	input_file.read((char*)&current_symb, 1); //reading second byte from file
-	while ((max_val_in_dict < unshort_int_max_val) && (!input_file.eof()))
-	{
-		if (dictionary.count(word + (char)current_symb)) // if word in dict
-		{
-			word += (char)current_symb;
-		}
-		else
-		{
-			dictionary.insert(pair<string, uint16_t>((word + (char)current_symb), ++max_val_in_dict)); // adding word to dict
-			result.push_back(dictionary.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
-	}
-	if (input_file.eof() && (max_val_in_dict < unshort_int_max_val)) // if file ended, but we use 16 bites code yet
-	{
-		result.push_back(dictionary.at(word));
-	}
-	else // if we should use 32 bites to code last word
-	{
-		uint16_t high_shift, low_shift;
-		high_shift = (uint16_t)(dictionary.at(word) >> 16);
-		low_shift = (uint16_t)(dictionary.at(word));
-		result.push_back(low_shift);
-		result.push_back(high_shift);
-	}
-	return result;
-}
-vector<uint32_t> compress_uint4(ifstream &input_file, map<string, uint32_t> &dictionary, unsigned long int &max_val_in_dict)
-{
-	vector<uint32_t> result;
-	uint8_t current_symb;
-	string word = "";
-	input_file.read((char*)&current_symb, 1); //reading first byte from file
-	word += (char)current_symb;
-	input_file.read((char*)&current_symb, 1); //reading second byte from file
-	while ((max_val_in_dict < unshort_int_max_val) && (!input_file.eof()))
-	{
-		if (dictionary.count(word + (char)current_symb)) // if word in dict
-		{
-			word += (char)current_symb;
-		}
-		else
-		{
-			dictionary.insert(pair<string, unsigned long int>((word + (char)current_symb), ++max_val_in_dict)); // adding word to dict
-			result.push_back(dictionary.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
-	}
-	result.push_back(dictionary.at(word));
-	return result;
-}
 void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 {
 	switch (size)
