@@ -131,46 +131,93 @@ vector<uint32_t> compress_uint4(ifstream &input_file, map<string, uint32_t> &dic
 	result.push_back(dictionary.at(word));
 	return result;
 }
+void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
+{
+	switch (size)
+	{
+	case 2:
+		vect.push_back((uint16_t)number);
+		break;
+	case 4:
+		vect.push_back((uint16_t)number);
+		vect.push_back((uint16_t)(number >> 8));
+		break;
+	case 8:
+		vect.push_back((uint16_t)number);
+		vect.push_back((uint16_t)(number >> 8));
+		vect.push_back((uint16_t)(number >> 16));
+		vect.push_back((uint16_t)(number >> 24));
+		break;
+	default:
+		break;
+	}
+
+}
 unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
 	map<string, uint32_t> dict;
 	// initialization dict
 	string temp = "";
-	for (unsigned char i = 0; i < 255; i++)
+	for (unsigned int i = 0; i < 256; i++)
 	{
-		temp += i;
-		dict.insert(pair<string, uint32_t>(temp, (unsigned long int)i));
+		temp += (char)i;
+		dict.insert(pair<string,uint32_t>(temp, (uint32_t)i));
 		temp = "";
 	}
-	temp += (unsigned char)255;
-	dict.insert(pair<string, uint32_t>(temp, (unsigned long int)255));
-	temp = "";
 	// compressing
-	unsigned long int max_code_in_dict = 255;
-		//compressing using 16 bites codes
-	vector<uint16_t> result_uint2 = compress_uint2(input_file, dict, max_code_in_dict);
-	bool used_uint4 = false;
-	vector<uint32_t> result_uint4;
-	if ( (max_code_in_dict >= unshort_int_max_val) && (!input_file.eof()) ) // if file is not ended, but we should use 32 bites codes now
+	uint32_t max_code_in_dict = 255;
+	//compressing using 16 bites codes
+	vector<uint16_t> result;
+	uint8_t current_symb;
+	string word = "";
+	input_file.read((char*)&current_symb, 1); //reading first byte from file
+	word += (char)current_symb;
+	input_file.read((char*)&current_symb, 1); //reading second byte from file
+	uint32_t code_lenght = 2;
+	uint32_t count_readed_bytes = 2;
+	while ((max_code_in_dict < UINT16_MAX + 1) && (!input_file.eof()))
 	{
-		result_uint4 = compress_uint4(input_file, dict, max_code_in_dict);
-		used_uint4 = true;
+		if (dict.count(word + (char)current_symb)) // if word in dict
+		{
+			word += (char)current_symb;
+		}
+		else
+		{
+			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+			//cout << result.size() << endl;// adding word to dict
+			write_to_vector(dict.at(word), code_lenght, result);
+			//result.push_back(dict.at(word));
+			word = (char)current_symb;
+		}
+		input_file.read((char*)&current_symb, 1);
+		count_readed_bytes++;
 	}
-	unsigned long long int size_compressed_data = 2 * result_uint2.size() + (used_uint4 == true ? result_uint4.size() : 0);
+	code_lenght = 4;
+	while ((max_code_in_dict < UINT32_MAX + 1) && (!input_file.eof()))
+	{
+		if (dict.count(word + (char)current_symb)) // if word in dict
+		{
+			word += (char)current_symb;
+		}
+		else
+		{
+			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+			//cout << result.size() << endl;// adding word to dict
+			write_to_vector(dict.at(word), code_lenght, result);
+			//result.push_back(dict.at(word));
+			word = (char)current_symb;
+		}
+		input_file.read((char*)&current_symb, 1);
+	}
+	write_to_vector(dict.at(word), code_lenght, result);
+	unsigned long long int size_compressed_data = 2 * result.size();
 
 	// writing coded data to archive
 	if (size_compressed_data <= size_input_data)
 	{
-		for (unsigned long int i = 0; i < result_uint2.size(); i++)
+		for (unsigned long int i = 0; i < result.size(); i++)
 		{
-			output_file.write((char*)&(result_uint2[i]), sizeof(result_uint2[i]));
-		}
-		if (used_uint4)
-		{
-			for (unsigned long i = 0; i < result_uint4.size(); i++)
-			{
-				output_file.write((char*)&(result_uint4[i]), sizeof(result_uint4[i]));
-			}
+			output_file.write((char*)&(result[i]), sizeof(result[i]));
 		}
 	}
 	else // writing non-coded data to archive
@@ -189,7 +236,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		output_file.write((char*)&is_compressed, sizeof(is_compressed)); // setting flag that we haven't compressing data
 	}
 	output_file.close();
-	return size_compressed_data <= size_input_data ? size_compressed_data:size_input_data;
+	return size_compressed_data <= size_input_data ? size_compressed_data : size_input_data;
 }
 void write_string_to_file(string &input_str, ofstream &file)
 {
@@ -210,7 +257,7 @@ unsigned long int get_file_size(string filename)
 }
 int main(int argvc,char* argv[])
 {
-	if (argvc > 1)
+	if (argvc  > 1)
 	{
 		char* inp = argv[1];
 		string archive_name = "";
