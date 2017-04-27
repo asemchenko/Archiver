@@ -104,7 +104,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	for (unsigned int i = 0; i < 256; i++)
 	{
 		temp += (char)i;
-		dict.insert(pair<string,uint32_t>(temp, (uint32_t)i));
+		dict.insert(pair<string, uint32_t>(temp, (uint32_t)i));
 		temp = "";
 	}
 	// compressing
@@ -190,28 +190,65 @@ void write_string_to_file(string &input_str, ofstream &file)
 		file.write(&(input_str.c_str()[i]), 1);
 	}
 }
-unsigned long int get_file_size(string filename)
+unsigned long int get_file_size(FILE* &input_file)
 {
-		FILE *input_file = fopen(filename.c_str(), "rb");
-		fseek(input_file, 0, SEEK_END);
-		unsigned long int size_input_file = ftell(input_file);
-		fclose(input_file);
-		return size_input_file;
+	fseek(input_file, 0, SEEK_END);
+	unsigned long int size_input_file = ftell(input_file);
+	fclose(input_file);
+	return size_input_file;
 }
-int main(int argvc,char* argv[])
+int main(int argvc, char* argv[])
 {
-	if (argvc  > 0)
+	if (argvc  > 1)
 	{
-		char* inp = "--compress book dm_.pdf";//argv[1];
+		string mode_str = string(argv[1]);
 		string archive_name = "";
 		string filename = "";
-		mode_type mode = choice_mode(inp, archive_name, filename);
+		mode_type mode;
+		if (mode_str == "--compress")
+		{
+			if (argvc == 4)
+			{
+				archive_name = string(argv[2]);
+				filename = string(argv[3]);
+				mode = compressing;
+			}
+			else
+			{
+				printf("Error! Error in count operands for mode --compress\n");
+				mode = error;
+			}
+		}
+		else if (mode_str == "--decompress")
+		{
+			if (argvc == 3)
+			{
+				archive_name = string(argv[2]);
+				mode = decompressing;
+			}
+			else
+			{
+				printf("Error in count operands for mode --decompress\n");
+				mode = error;
+			}
+		}
+		else
+		{
+			printf("Error! There is no mode: %s\n", mode_str.c_str());
+			mode = error;
+		}
 		if (mode == error)
 		{
 			return 1;
 		}
 		// getting size of input file
-		unsigned long int size_input_file = get_file_size(filename);
+		FILE *file = fopen(filename.c_str(), "rb");
+		if (!file)
+		{
+			printf("Cannot open file %s\n", filename.c_str());
+			return 1;
+		}
+		unsigned long int size_input_file = get_file_size(file);
 		ifstream input_file(filename.c_str(), ios::binary | ios::in);
 		if (!input_file.is_open())
 		{
@@ -237,7 +274,5 @@ int main(int argvc,char* argv[])
 	{
 		printf("Error, no arguments\n");
 	}
-	system("pause");
-    return 0;
+	return 0;
 }
-
