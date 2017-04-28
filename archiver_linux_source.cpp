@@ -1,3 +1,7 @@
+// archiver.cpp: определяет точку входа для консольного приложения.
+//
+
+//#include "stdafx.h"
 #include <fstream>
 #include <stdio.h>
 #include <cstdlib>
@@ -100,7 +104,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	for (unsigned int i = 0; i < 256; i++)
 	{
 		temp += (char)i;
-		dict.insert(pair<string,uint32_t>(temp, (uint32_t)i));
+		dict.insert(pair<string, uint32_t>(temp, (uint32_t)i));
 		temp = "";
 	}
 	// compressing
@@ -132,7 +136,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		count_readed_bytes++;
 	}
 	code_lenght = 4;
-	while ((max_code_in_dict < UINT32_MAX + 1) && (!input_file.eof()))
+	while ((max_code_in_dict < UINT32_MAX ) && (!input_file.eof()))
 	{
 		if (dict.count(word + (char)current_symb)) // if word in dict
 		{
@@ -188,12 +192,12 @@ void write_string_to_file(string &input_str, ofstream &file)
 }
 unsigned long int get_file_size(FILE* &input_file)
 {
-		fseek(input_file, 0, SEEK_END);
-		unsigned long int size_input_file = ftell(input_file);
-		fclose(input_file);
-		return size_input_file;
+	fseek(input_file, 0, SEEK_END);
+	unsigned long int size_input_file = ftell(input_file);
+	fclose(input_file);
+	return size_input_file;
 }
-int main(int argvc,char* argv[])
+int main(int argvc, char* argv[])
 {
 	if (argvc  > 1)
 	{
@@ -215,7 +219,7 @@ int main(int argvc,char* argv[])
 				mode = error;
 			}
 		}
-		else if(mode_str == "--decompress")
+		else if (mode_str == "--decompress")
 		{
 			if (argvc == 3)
 			{
@@ -230,7 +234,7 @@ int main(int argvc,char* argv[])
 		}
 		else
 		{
-			printf("Error! There is no mode: %s\n",mode_str.c_str());
+			printf("Error! There is no mode: %s\n", mode_str.c_str());
 			mode = error;
 		}
 		if (mode == error)
@@ -270,5 +274,5 @@ int main(int argvc,char* argv[])
 	{
 		printf("Error, no arguments\n");
 	}
-    return 0;
+	return 0;
 }

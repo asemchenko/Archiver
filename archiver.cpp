@@ -11,8 +11,6 @@
 #include <map>
 #include <vector>
 #include <stdint.h>
-#define error_code 2
-#define unshort_int_max_val 65538
 using namespace std;
 enum mode_type
 {
@@ -20,60 +18,6 @@ enum mode_type
 	decompressing = 0,
 	error = 2
 };
-mode_type choice_mode(char* input_str, string &archive_name, string &file_name)
-{
-	string input = string(input_str);
-	string temp = "";
-	mode_type compressing_mode;
-	int i = 0;
-	// reading mode (compress/decompress)
-	while (i < input.length())
-	{
-		temp += input[i];
-		i++;
-		if (input[i] == ' ')
-		{
-			if (temp == "--compress")
-			{
-				compressing_mode = compressing;
-				break;
-			}
-			else if (temp == "--decompress")
-			{
-				compressing_mode = decompressing;
-				break;
-			}
-			else
-			{
-				printf("Error in input string with parameters =(\n");
-				return error;
-			}
-		}
-	}
-	i++;
-	while (i < input.length())
-	{
-		if (input[i] != ' ')
-		{
-			archive_name += input[i];
-		}
-		else
-		{
-			break;
-		}
-		i++;
-	}
-	i++;
-	if (compressing_mode)
-	{
-		while (i < input.length())
-		{
-			file_name += input[i];
-			i++;
-		}
-	}
-	return compressing_mode;
-}
 void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 {
 	switch (size)
@@ -95,6 +39,26 @@ void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 		break;
 	}
 
+}
+uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
+{
+	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,
+	// которые хранятся  буффере от прошлого числа. Ту часть number которую не удалось вместить мы оставляем в буффере до следующего раза
+	static uint8_t buffer = 0;
+	static int free_space_buffer = 8;
+	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
+	count_bites -= free_space_buffer;
+	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
+										 // пишем в вектор оставшиеся БАЙТЫ числа number
+	while (count_bites > 7)
+	{
+		count_bites -= 8;
+		vect.push_back((uint8_t)(number >> (count_bites)));
+	}
+	// пишем в буффер (в его старшие разряды) оставшиеся БИТЫ числа number
+	buffer = number << (8 - count_bites);
+	free_space_buffer = 8 - count_bites;
+	return free_space_buffer;
 }
 unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
