@@ -74,51 +74,48 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	// compressing
 	uint32_t max_code_in_dict = 255;
 	//compressing using 16 bites codes
-	vector<uint16_t> result;
+	vector<uint8_t> result;
 	uint8_t current_symb;
 	string word = "";
 	input_file.read((char*)&current_symb, 1); //reading first byte from file
 	word += (char)current_symb;
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
-	uint32_t code_lenght = 2;
+	uint32_t code_lenght = 9;
 	uint32_t count_readed_bytes = 2;
-	while ((max_code_in_dict < UINT16_MAX + 1) && (!input_file.eof()))
+	uint32_t j;
+	while (!input_file.eof())
 	{
-		if (dict.count(word + (char)current_symb)) // if word in dict
+		j = 0;
+		uint32_t max = 1 << (code_lenght - 1);
+		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
+		while ((j < max) && (!input_file.eof()))
 		{
-			word += (char)current_symb;
+			if (dict.count(word + (char)current_symb)) // if word in dict
+			{
+				word += (char)current_symb;
+			}
+			else
+			{
+				dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+				j++;
+				write_to_vect(dict.at(word), code_lenght, result);
+				word = (char)current_symb;
+			}
+			input_file.read((char*)&current_symb, 1);
+			count_readed_bytes++;
 		}
-		else
-		{
-			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
-			//cout << result.size() << endl;// adding word to dict
-			write_to_vector(dict.at(word), code_lenght, result);
-			//result.push_back(dict.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
-		count_readed_bytes++;
+		code_lenght++;
 	}
-	code_lenght = 4;
-	while ((max_code_in_dict < UINT32_MAX + 1) && (!input_file.eof()))
+	if (j < (1 << (code_lenght - 2)))
 	{
-		if (dict.count(word + (char)current_symb)) // if word in dict
-		{
-			word += (char)current_symb;
-		}
-		else
-		{
-			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
-			//cout << result.size() << endl;// adding word to dict
-			write_to_vector(dict.at(word), code_lenght, result);
-			//result.push_back(dict.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
+		code_lenght--;
 	}
-	write_to_vector(dict.at(word), code_lenght, result);
-	unsigned long long int size_compressed_data = 2 * result.size();
-
+	uint8_t free_bits_in_buffer = write_to_vect(dict.at(word), code_lenght, result);
+	if (free_bits_in_buffer < 8) // if buffer is not empty
+	{
+		write_to_vect(0, free_bits_in_buffer, result); // writing buffer to result
+	}
+	unsigned long long int size_compressed_data = result.size();
 	// writing coded data to archive
 	if (size_compressed_data <= size_input_data)
 	{
@@ -143,6 +140,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		output_file.write((char*)&is_compressed, sizeof(is_compressed)); // setting flag that we haven't compressing data
 	}
 	output_file.close();
+	std::cout << "\n\n" << '\n';
 	return size_compressed_data <= size_input_data ? size_compressed_data : size_input_data;
 }
 void write_string_to_file(string &input_str, ofstream &file)
@@ -229,7 +227,10 @@ int main(int argvc, char* argv[])
 				printf("Starting compressing ...\n");
 				unsigned long int size_data = compress_file(archive_file, input_file, size_input_file);
 				printf("Data have been compressed\n");
-				cout << "Size compressed part: " << size_data << " bytes" << endl;
+				cout << "Size input file:      " << size_input_file << endl;
+				cout << "Size compressed part: " << size_data + 6 + filename.length() << " bytes" << endl;
+				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 6 + filename.length())) << endl;
+				
 			}
 		}
 		input_file.close();

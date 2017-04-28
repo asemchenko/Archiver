@@ -1,7 +1,3 @@
-// archiver.cpp: определяет точку входа для консольного приложения.
-//
-
-//#include "stdafx.h"
 #include <fstream>
 #include <stdio.h>
 #include <cstdlib>
@@ -11,8 +7,6 @@
 #include <map>
 #include <vector>
 #include <stdint.h>
-#define error_code 2
-#define unshort_int_max_val 65538
 using namespace std;
 enum mode_type
 {
@@ -20,60 +14,6 @@ enum mode_type
 	decompressing = 0,
 	error = 2
 };
-mode_type choice_mode(char* input_str, string &archive_name, string &file_name)
-{
-	string input = string(input_str);
-	string temp = "";
-	mode_type compressing_mode;
-	int i = 0;
-	// reading mode (compress/decompress)
-	while (i < input.length())
-	{
-		temp += input[i];
-		i++;
-		if (input[i] == ' ')
-		{
-			if (temp == "--compress")
-			{
-				compressing_mode = compressing;
-				break;
-			}
-			else if (temp == "--decompress")
-			{
-				compressing_mode = decompressing;
-				break;
-			}
-			else
-			{
-				printf("Error in input string with parameters =(\n");
-				return error;
-			}
-		}
-	}
-	i++;
-	while (i < input.length())
-	{
-		if (input[i] != ' ')
-		{
-			archive_name += input[i];
-		}
-		else
-		{
-			break;
-		}
-		i++;
-	}
-	i++;
-	if (compressing_mode)
-	{
-		while (i < input.length())
-		{
-			file_name += input[i];
-			i++;
-		}
-	}
-	return compressing_mode;
-}
 void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 {
 	switch (size)
@@ -96,6 +36,26 @@ void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 	}
 
 }
+uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
+{
+	// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ vect пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ,
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+	static uint8_t buffer = 0;
+	static int free_space_buffer = 8;
+	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
+	count_bites -= free_space_buffer;
+	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
+										 // пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number
+	while (count_bites > 7)
+	{
+		count_bites -= 8;
+		vect.push_back((uint8_t)(number >> (count_bites)));
+	}
+	// пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number
+	buffer = number << (8 - count_bites);
+	free_space_buffer = 8 - count_bites;
+	return free_space_buffer;
+}
 unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
 	map<string, uint32_t> dict;
@@ -110,51 +70,49 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	// compressing
 	uint32_t max_code_in_dict = 255;
 	//compressing using 16 bites codes
-	vector<uint16_t> result;
+	vector<uint8_t> result;
 	uint8_t current_symb;
 	string word = "";
 	input_file.read((char*)&current_symb, 1); //reading first byte from file
 	word += (char)current_symb;
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
-	uint32_t code_lenght = 2;
+	uint32_t code_lenght = 9;
 	uint32_t count_readed_bytes = 2;
-	while ((max_code_in_dict < UINT16_MAX + 1) && (!input_file.eof()))
-	{
-		if (dict.count(word + (char)current_symb)) // if word in dict
-		{
-			word += (char)current_symb;
-		}
-		else
-		{
-			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
-			//cout << result.size() << endl;// adding word to dict
-			write_to_vector(dict.at(word), code_lenght, result);
-			//result.push_back(dict.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
-		count_readed_bytes++;
-	}
-	code_lenght = 4;
-	while ((max_code_in_dict < UINT32_MAX ) && (!input_file.eof()))
-	{
-		if (dict.count(word + (char)current_symb)) // if word in dict
-		{
-			word += (char)current_symb;
-		}
-		else
-		{
-			dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
-			//cout << result.size() << endl;// adding word to dict
-			write_to_vector(dict.at(word), code_lenght, result);
-			//result.push_back(dict.at(word));
-			word = (char)current_symb;
-		}
-		input_file.read((char*)&current_symb, 1);
-	}
-	write_to_vector(dict.at(word), code_lenght, result);
-	unsigned long long int size_compressed_data = 2 * result.size();
 
+	uint32_t j;
+	while (!input_file.eof())
+	{
+		j = 0;
+		uint32_t max = 1 << (code_lenght - 1);
+		std::cout << "Left: " << size_input_data - count_readed_bytes<<" bytes" <<'\n';
+		while ((j < max) && (!input_file.eof()))
+		{
+			if (dict.count(word + (char)current_symb)) // if word in dict
+			{
+				word += (char)current_symb;
+			}
+			else
+			{
+				dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+				j++;
+				write_to_vect(dict.at(word), code_lenght, result);
+				word = (char)current_symb;
+			}
+			input_file.read((char*)&current_symb, 1);
+			count_readed_bytes++;
+		}
+		code_lenght++;
+	}
+	if (j < (1<<(code_lenght-2)))
+	{
+		code_lenght--;
+	}
+	uint8_t free_bits_in_buffer = write_to_vect(dict.at(word), code_lenght, result);
+	if (free_bits_in_buffer < 8) // if buffer is not empty
+	{
+		write_to_vect(0, free_bits_in_buffer, result); // writing buffer to result
+	}
+	unsigned long long int size_compressed_data = result.size();
 	// writing coded data to archive
 	if (size_compressed_data <= size_input_data)
 	{
@@ -179,6 +137,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		output_file.write((char*)&is_compressed, sizeof(is_compressed)); // setting flag that we haven't compressing data
 	}
 	output_file.close();
+	std::cout << "\n\n" << '\n';
 	return size_compressed_data <= size_input_data ? size_compressed_data : size_input_data;
 }
 void write_string_to_file(string &input_str, ofstream &file)
@@ -265,7 +224,9 @@ int main(int argvc, char* argv[])
 				printf("Starting compressing ...\n");
 				unsigned long int size_data = compress_file(archive_file, input_file, size_input_file);
 				printf("Data have been compressed\n");
-				cout << "Size compressed part: " << size_data << " bytes" << endl;
+				cout << "Size input file:      " << size_input_file <<" bytes" <<endl;
+				cout << "Size compressed part: " << size_data + 6 + filename.length() << " bytes" << endl;
+				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 6 + filename.length())) << endl;
 			}
 		}
 		input_file.close();
