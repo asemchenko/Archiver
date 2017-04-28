@@ -1,4 +1,4 @@
-// archiver.cpp: определяет точку входа для консольного приложения.
+// archiver.cpp: Г®ГЇГ°ГҐГ¤ГҐГ«ГїГҐГІ ГІГ®Г·ГЄГі ГўГµГ®Г¤Г  Г¤Г«Гї ГЄГ®Г­Г±Г®Г«ГјГ­Г®ГЈГ® ГЇГ°ГЁГ«Г®Г¦ГҐГ­ГЁГї.
 //
 
 #include "stdafx.h"
@@ -136,7 +136,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		count_readed_bytes++;
 	}
 	code_lenght = 4;
-	while ((max_code_in_dict < UINT32_MAX + 1) && (!input_file.eof()))
+	while ((max_code_in_dict < UINT32_MAX) && (!input_file.eof()))
 	{
 		if (dict.count(word + (char)current_symb)) // if word in dict
 		{
