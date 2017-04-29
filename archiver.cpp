@@ -73,7 +73,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	}
 	// compressing
 	uint32_t max_code_in_dict = 255;
-	//compressing using 16 bites codes
 	vector<uint8_t> result;
 	uint8_t current_symb;
 	string word = "";
@@ -86,8 +85,11 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	while (!input_file.eof())
 	{
 		j = 0;
-		uint32_t max = 1 << (code_lenght - 1);
+		uint32_t max = 1 << (code_lenght - 1); // 2^(code_lenght - 1). ^ - pow, not XOR
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
+		// coding words using code_leght bites code
+		// таким немного сложным способом я отслеживаю когда нужно увеличить длину кода. Если мы начинаем кодировать n-битными кодами, то через 2^(n-1) добавлений в словарь 
+		// прийдеться увеличить длину кода
 		while ((j < max) && (!input_file.eof()))
 		{
 			if (dict.count(word + (char)current_symb)) // if word in dict
@@ -104,9 +106,13 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 			input_file.read((char*)&current_symb, 1);
 			count_readed_bytes++;
 		}
+		// starting use (code_lenght + 1) bites code
 		code_lenght++;
 	}
-	if (j < (1 << (code_lenght - 2)))
+	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
+	// обработка ситуации когда файл закончился до того во время работы цикла while ((j < max) && (!input_file.eof())). При этом выходя из цикла мы увеличили code_lenght на 1
+	// хотя делать этого не следовало. Так что просто отнимаем еденицу от code_lenght. Еще одну еденицу мы должны отнять и так.
+	if (j < (1 << (code_lenght - 2))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
 	{
 		code_lenght--;
 	}
@@ -145,7 +151,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 }
 void write_string_to_file(string &input_str, ofstream &file)
 {
-	unsigned int len = input_str.length() + 1;
+	uint8_t len = input_str.length() + 1;
 	file.write((char*)&len, sizeof(len));
 	for (int i = 0; i < len; i++)
 	{

@@ -38,20 +38,20 @@ void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
 }
 uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 {
-	// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ vect пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ,
-	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,
+	// которые хранятся  буффере от прошлого числа. Ту часть number которую не удалось вместить мы оставляем в буффере до следующего раза
 	static uint8_t buffer = 0;
 	static int free_space_buffer = 8;
 	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
 	count_bites -= free_space_buffer;
 	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
-										 // пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number
+										 // пишем в вектор оставшиеся БАЙТЫ числа number
 	while (count_bites > 7)
 	{
 		count_bites -= 8;
 		vect.push_back((uint8_t)(number >> (count_bites)));
 	}
-	// пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ number
+	// пишем в буффер (в его старшие разряды) оставшиеся БИТЫ числа number
 	buffer = number << (8 - count_bites);
 	free_space_buffer = 8 - count_bites;
 	return free_space_buffer;
@@ -78,13 +78,12 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
 	uint32_t code_lenght = 9;
 	uint32_t count_readed_bytes = 2;
-
 	uint32_t j;
 	while (!input_file.eof())
 	{
 		j = 0;
 		uint32_t max = 1 << (code_lenght - 1);
-		std::cout << "Left: " << size_input_data - count_readed_bytes<<" bytes" <<'\n';
+		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
 		while ((j < max) && (!input_file.eof()))
 		{
 			if (dict.count(word + (char)current_symb)) // if word in dict
@@ -103,7 +102,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		}
 		code_lenght++;
 	}
-	if (j < (1<<(code_lenght-2)))
+	if (j < (1 << (code_lenght - 2)))
 	{
 		code_lenght--;
 	}
@@ -224,9 +223,10 @@ int main(int argvc, char* argv[])
 				printf("Starting compressing ...\n");
 				unsigned long int size_data = compress_file(archive_file, input_file, size_input_file);
 				printf("Data have been compressed\n");
-				cout << "Size input file:      " << size_input_file <<" bytes" <<endl;
+				cout << "Size input file:      " << size_input_file << endl;
 				cout << "Size compressed part: " << size_data + 6 + filename.length() << " bytes" << endl;
 				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 6 + filename.length())) << endl;
+				
 			}
 		}
 		input_file.close();
