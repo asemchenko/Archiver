@@ -173,7 +173,7 @@ int main(int argvc, char* argv[])
 		string archive_name = "";
 		string filename = "";
 		mode_type mode;
-		if (mode_str == "--compress")
+		if ((mode_str == "--compress") || (mode_str == "-c"))
 		{
 			if (argvc == 4)
 			{
@@ -187,7 +187,7 @@ int main(int argvc, char* argv[])
 				mode = error;
 			}
 		}
-		else if (mode_str == "--decompress")
+		else if ((mode_str == "--decompress") || (mode_str == "-d"))
 		{
 			if (argvc == 3)
 			{
