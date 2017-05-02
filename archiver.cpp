@@ -11,9 +11,7 @@
 #include <map>
 #include <vector>
 #include <stdint.h>
-
 using namespace std;
-
 enum mode_type
 {
 	compressing = 1,
