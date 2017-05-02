@@ -233,9 +233,9 @@ int main(int argvc, char* argv[])
 				printf("Starting compressing ...\n");
 				unsigned long int size_data = compress_file(archive_file, input_file, size_input_file);
 				printf("Data have been compressed\n");
-				cout << "Size input file:      " << size_input_file << endl;
-				cout << "Size compressed part: " << size_data + 6 + filename.length() << " bytes" << endl;
-				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 6 + filename.length())) << endl;
+				cout << "Size input file: " << size_input_file << endl;
+				cout << "Size archive:    " << size_data + 3 + filename.length() << " bytes" << endl;
+				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 3 + filename.length())) << endl;
 				
 			}
 		}
