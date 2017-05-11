@@ -14,28 +14,6 @@ enum mode_type
 	decompressing = 0,
 	error = 2
 };
-void write_to_vector(uint32_t number, int size, vector<uint16_t> &vect)
-{
-	switch (size)
-	{
-	case 2:
-		vect.push_back((uint16_t)number);
-		break;
-	case 4:
-		vect.push_back((uint16_t)number);
-		vect.push_back((uint16_t)(number >> 8));
-		break;
-	case 8:
-		vect.push_back((uint16_t)number);
-		vect.push_back((uint16_t)(number >> 8));
-		vect.push_back((uint16_t)(number >> 16));
-		vect.push_back((uint16_t)(number >> 24));
-		break;
-	default:
-		break;
-	}
-
-}
 uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 {
 	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,

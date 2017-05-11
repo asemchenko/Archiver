@@ -1,4 +1,4 @@
-// archiver.cpp: определяет точку входа для консольного приложения.
+п»ї// archiver.cpp: РѕРїСЂРµРґРµР»СЏРµС‚ С‚РѕС‡РєСѓ РІС…РѕРґР° РґР»СЏ РєРѕРЅСЃРѕР»СЊРЅРѕРіРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ.
 //
 
 #include "stdafx.h"
@@ -20,20 +20,20 @@ enum mode_type
 };
 uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 {
-	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,
-	// которые хранятся  буффере от прошлого числа. Ту часть number которую не удалось вместить мы оставляем в буффере до следующего раза
+	// СЌС‚Р° С„СѓРЅРєС†РёСЏ РїРµСЂРµСЂР°Р·Р±РёРІР°РµС‚ С‡РёСЃР»Рѕ number РЅР° Р±РёС‚С‹ С‚Р°Рє С‡С‚РѕР±С‹ РјРѕР¶РЅРѕ Р±С‹Р»Рѕ Р·Р°РїРёСЃР°С‚СЊ РµРіРѕ РІ РІРµРєС‚РѕСЂ vect РІРјРµСЃС‚Рµ СЃ РѕСЃС‚Р°С‚РєР°РјРё Р±РёС‚РѕРІ,
+	// РєРѕС‚РѕСЂС‹Рµ С…СЂР°РЅСЏС‚СЃСЏ  Р±СѓС„С„РµСЂРµ РѕС‚ РїСЂРѕС€Р»РѕРіРѕ С‡РёСЃР»Р°. РўСѓ С‡Р°СЃС‚СЊ number РєРѕС‚РѕСЂСѓСЋ РЅРµ СѓРґР°Р»РѕСЃСЊ РІРјРµСЃС‚РёС‚СЊ РјС‹ РѕСЃС‚Р°РІР»СЏРµРј РІ Р±СѓС„С„РµСЂРµ РґРѕ СЃР»РµРґСѓСЋС‰РµРіРѕ СЂР°Р·Р°
 	static uint8_t buffer = 0;
 	static int free_space_buffer = 8;
 	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
 	count_bites -= free_space_buffer;
 	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
-										 // пишем в вектор оставшиеся БАЙТЫ числа number
+										 // РїРёС€РµРј РІ РІРµРєС‚РѕСЂ РѕСЃС‚Р°РІС€РёРµСЃСЏ Р‘РђР™РўР« С‡РёСЃР»Р° number
 	while (count_bites > 7)
 	{
 		count_bites -= 8;
 		vect.push_back((uint8_t)(number >> (count_bites)));
 	}
-	// пишем в буффер (в его старшие разряды) оставшиеся БИТЫ числа number
+	// РїРёС€РµРј РІ Р±СѓС„С„РµСЂ (РІ РµРіРѕ СЃС‚Р°СЂС€РёРµ СЂР°Р·СЂСЏРґС‹) РѕСЃС‚Р°РІС€РёРµСЃСЏ Р‘РРўР« С‡РёСЃР»Р° number
 	buffer = number << (8 - count_bites);
 	free_space_buffer = 8 - count_bites;
 	return free_space_buffer;
@@ -66,8 +66,8 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		uint32_t max = 1 << (code_lenght - 1); // 2^(code_lenght - 1). ^ - pow, not XOR
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
 		// coding words using code_leght bites code
-		// таким немного сложным способом я отслеживаю когда нужно увеличить длину кода. Если мы начинаем кодировать n-битными кодами, то через 2^(n-1) добавлений в словарь 
-		// прийдеться увеличить длину кода
+		// С‚Р°РєРёРј РЅРµРјРЅРѕРіРѕ СЃР»РѕР¶РЅС‹Рј СЃРїРѕСЃРѕР±РѕРј СЏ РѕС‚СЃР»РµР¶РёРІР°СЋ РєРѕРіРґР° РЅСѓР¶РЅРѕ СѓРІРµР»РёС‡РёС‚СЊ РґР»РёРЅСѓ РєРѕРґР°. Р•СЃР»Рё РјС‹ РЅР°С‡РёРЅР°РµРј РєРѕРґРёСЂРѕРІР°С‚СЊ n-Р±РёС‚РЅС‹РјРё РєРѕРґР°РјРё, С‚Рѕ С‡РµСЂРµР· 2^(n-1) РґРѕР±Р°РІР»РµРЅРёР№ РІ СЃР»РѕРІР°СЂСЊ 
+		// РїСЂРёР№РґРµС‚СЊСЃСЏ СѓРІРµР»РёС‡РёС‚СЊ РґР»РёРЅСѓ РєРѕРґР°
 		while ((j < max) && (!input_file.eof()))
 		{
 			if (dict.count(word + (char)current_symb)) // if word in dict
@@ -88,8 +88,8 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		code_lenght++;
 	}
 	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
-	// обработка ситуации когда файл закончился до того во время работы цикла while ((j < max) && (!input_file.eof())). При этом выходя из цикла мы увеличили code_lenght на 1
-	// хотя делать этого не следовало. Так что просто отнимаем еденицу от code_lenght. Еще одну еденицу мы должны отнять и так.
+	// РѕР±СЂР°Р±РѕС‚РєР° СЃРёС‚СѓР°С†РёРё РєРѕРіРґР° С„Р°Р№Р» Р·Р°РєРѕРЅС‡РёР»СЃСЏ РґРѕ С‚РѕРіРѕ РІРѕ РІСЂРµРјСЏ СЂР°Р±РѕС‚С‹ С†РёРєР»Р° while ((j < max) && (!input_file.eof())). РџСЂРё СЌС‚РѕРј РІС‹С…РѕРґСЏ РёР· С†РёРєР»Р° РјС‹ СѓРІРµР»РёС‡РёР»Рё code_lenght РЅР° 1
+	// С…РѕС‚СЏ РґРµР»Р°С‚СЊ СЌС‚РѕРіРѕ РЅРµ СЃР»РµРґРѕРІР°Р»Рѕ. РўР°Рє С‡С‚Рѕ РїСЂРѕСЃС‚Рѕ РѕС‚РЅРёРјР°РµРј РµРґРµРЅРёС†Сѓ РѕС‚ code_lenght. Р•С‰Рµ РѕРґРЅСѓ РµРґРµРЅРёС†Сѓ РјС‹ РґРѕР»Р¶РЅС‹ РѕС‚РЅСЏС‚СЊ Рё С‚Р°Рє.
 	if (j < (1 << (code_lenght - 2))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
 	{
 		code_lenght--;
