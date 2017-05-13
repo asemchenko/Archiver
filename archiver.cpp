@@ -187,23 +187,22 @@ int main(int argvc, char* argv[])
 		{
 			return 1;
 		}
-		// getting size of input file
-		FILE *file = fopen(filename.c_str(), "rb");
-		if (!file)
-		{
-			printf("Cannot open file %s\n", filename.c_str());
-			return 1;
-		}
-		unsigned long int size_input_file = get_file_size(file);
-		ifstream input_file(filename.c_str(), ios::binary | ios::in);
-		if (!input_file.is_open())
-		{
-			cout << "Error! File " << filename << " not found" << endl;
-		}
 		else
 		{
 			if (mode == compressing)
 			{
+				FILE *file = fopen(filename.c_str(), "rb");
+				if (!file)
+				{
+				printf("Cannot open file %s\n", filename.c_str());
+				return 1;
+				}
+				ifstream input_file(filename.c_str(), ios::binary | ios::in);
+				if (!input_file.is_open())
+				{
+					cout << "Error! File " << filename << " not found" << endl;
+				}
+				unsigned long int size_input_file = get_file_size(file);
 				ofstream archive_file(archive_name.c_str(), ios::binary | ios::out);
 				bool is_compressed = true;
 				archive_file.write((char*)&is_compressed, sizeof(is_compressed));
@@ -214,10 +213,9 @@ int main(int argvc, char* argv[])
 				cout << "Size input file: " << size_input_file << endl;
 				cout << "Size archive:    " << size_data + 3 + filename.length() << " bytes" << endl;
 				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 3 + filename.length())) << endl;
-				
+				input_file.close();
 			}
 		}
-		input_file.close();
 	}
 	else
 	{
