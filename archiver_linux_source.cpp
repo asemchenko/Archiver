@@ -38,6 +38,105 @@ uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 	free_space_buffer = 8 - count_bites;
 	return free_space_buffer;
 }
+uint32_t read_bites(ifstream &file, int count_bites, int &count_readed_bites)
+{
+	static uint8_t buffer = 0;
+	static uint8_t size_buffer = 0;
+	count_readed_bites = 0;
+	uint32_t result;
+	if (count_bites > size_buffer)
+	{
+		result = buffer >> (8 - size_buffer);
+		count_readed_bites += size_buffer;
+		buffer = 0; // его вообще-то и не обязательно обнулять
+		size_buffer = 0;
+		uint8_t temp;
+		int count_bytes = int((count_bites - count_readed_bites) / 8);
+		for (int i = 0; i < count_bytes; i++)
+		{
+			if (file.read((char*)&temp, 1))
+			{
+				result <<= 8;
+				result |= temp;
+				count_readed_bites += 8;
+			}
+			else
+			{
+				break;
+			}
+		}
+		if (count_readed_bites < count_bites)
+		{
+			if (file.read((char*)&temp, 1))
+			{
+				result <<= count_bites - count_readed_bites;
+				result |= temp >> (8 - (count_bites - count_readed_bites));
+				buffer = temp << (count_bites - count_readed_bites);
+				size_buffer = 8 - (count_bites - count_readed_bites);
+				count_readed_bites += count_bites - count_readed_bites;
+			}
+		}
+	}
+	else
+	{
+		result = buffer >> (8 - count_bites);
+		buffer <<= count_bites;
+		size_buffer = 8 - count_bites;
+		count_readed_bites += count_bites;
+	}
+	return result;
+}
+void decompress(ifstream &input_file, ofstream &output_file)
+{
+	map<uint32_t,string> dict;
+	map<string, uint32_t> inversed_dict;
+	string temp = "";
+	for (unsigned int i = 0; i < 256; i++)
+	{
+		temp += (char)i;
+		dict.insert(pair<uint32_t, string>((uint32_t)i, temp));
+		inversed_dict.insert(pair<string, uint32_t>(temp, (uint32_t)i));
+		temp = "";
+	}
+	int max_code_in_dict = 255;
+	int code_lenght = 9;
+	int count_readed_bites;
+	uint32_t readed_code = read_bites(input_file, code_lenght, count_readed_bites);
+	string prev_code = dict.at(readed_code);
+	output_file << prev_code;
+	bool flag_go_away_cicle = false;
+	while (!input_file.eof())
+	{
+		while (max_code_in_dict < (1<<code_lenght))
+		{
+			readed_code = read_bites(input_file, code_lenght, count_readed_bites);;
+			if (code_lenght == count_readed_bites)
+			{
+				if (inversed_dict.count(prev_code + dict.at(readed_code)))
+				{
+					prev_code += dict.at(readed_code);
+				}
+				else
+				{
+					dict.insert(pair<uint32_t, string>(max_code_in_dict++, prev_code + dict.at(readed_code)));
+					inversed_dict.insert(pair<string, uint32_t>(prev_code + dict.at(readed_code),max_code_in_dict));
+				}
+				output_file << dict.at(readed_code);
+			}
+			else
+			{
+				flag_go_away_cicle = true;
+				break;
+			}
+		}
+		if (flag_go_away_cicle)
+		{
+			break;
+		}
+		code_lenght++;
+	}
+	output_file.close();
+}
 unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
 	map<string, uint32_t> dict;
@@ -63,7 +162,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	while (!input_file.eof())
 	{
 		j = 0;
-		uint32_t max = 1 << (code_lenght - 1); // 2^(code_lenght - 1). ^ - pow, not XOR
+		uint32_t max = 1 << (code_lenght); // 2^(code_lenght - 1). ^ - pow, not XOR
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
 		// coding words using code_leght bites code
 		// таким немного сложным способом я отслеживаю когда нужно увеличить длину кода. Если мы начинаем кодировать n-битными кодами, то через 2^(n-1) добавлений в словарь 
@@ -214,6 +313,25 @@ int main(int argvc, char* argv[])
 				cout << "Size archive:    " << size_data + 3 + filename.length() << " bytes" << endl;
 				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 3 + filename.length())) << endl;
 				input_file.close();
+			}
+			else
+			{
+				ifstream arhive(archive_name.c_str(), ios_base::binary);
+				// reading is file archived and filename
+				bool is_archived;
+				arhive.read((char*)&is_archived, 1);
+				uint8_t count_chars_in_filename;
+				arhive.read((char*)&count_chars_in_filename, 1);
+				string filename = "";
+				for (int i = 0; i < (int)count_chars_in_filename; i++)
+				{
+					char temp;
+					arhive.read(&temp, 1);
+					filename += temp;
+				}
+				cout << "Generating file " << filename << endl;
+				ofstream output_file(filename.c_str(), ios_base::binary);
+				decompress(arhive, output_file);
 			}
 		}
 	}
