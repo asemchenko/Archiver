@@ -201,8 +201,8 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 			count_readed_bytes++;
 		}
 		// starting use (code_lenght + 1) bites code
-		cout <<"Current code lenght: "<<code_lenght<<endl;
 		code_lenght++;
+		cout << "Current code lenght: " << code_lenght << endl;
 	}
 	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
 	// обработка ситуации когда файл закончилс€ до того во врем€ работы цикла while ((j < max) && (!input_file.eof())). ѕри этом выход€ из цикла мы увеличили code_lenght на 1
@@ -354,6 +354,7 @@ int main(int argvc, char* argv[])
 				}
 				cout << "Generating file " << filename <<" ..."<< endl;
 				ofstream output_file(filename.c_str(), ios_base::binary);
+				cout << (is_archived ? "I see that this file was compressed" : "I see that this file is'nt compressed") << endl;
 				if (is_archived)
 				{
 					status_decoding stat = decompress(arhive, output_file);
