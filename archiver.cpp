@@ -1,4 +1,4 @@
-п»ї// archiver.cpp: РѕРїСЂРµРґРµР»СЏРµС‚ С‚РѕС‡РєСѓ РІС…РѕРґР° РґР»СЏ РєРѕРЅСЃРѕР»СЊРЅРѕРіРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ.
+// archiver.cpp: определяет точку входа для консольного приложения.
 //
 
 #include "stdafx.h"
@@ -12,6 +12,11 @@
 #include <vector>
 #include <stdint.h>
 using namespace std;
+enum status_decoding
+{
+	successfully,
+	error_decoding
+};
 enum mode_type
 {
 	compressing = 1,
@@ -20,20 +25,20 @@ enum mode_type
 };
 uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 {
-	// СЌС‚Р° С„СѓРЅРєС†РёСЏ РїРµСЂРµСЂР°Р·Р±РёРІР°РµС‚ С‡РёСЃР»Рѕ number РЅР° Р±РёС‚С‹ С‚Р°Рє С‡С‚РѕР±С‹ РјРѕР¶РЅРѕ Р±С‹Р»Рѕ Р·Р°РїРёСЃР°С‚СЊ РµРіРѕ РІ РІРµРєС‚РѕСЂ vect РІРјРµСЃС‚Рµ СЃ РѕСЃС‚Р°С‚РєР°РјРё Р±РёС‚РѕРІ,
-	// РєРѕС‚РѕСЂС‹Рµ С…СЂР°РЅСЏС‚СЃСЏ  Р±СѓС„С„РµСЂРµ РѕС‚ РїСЂРѕС€Р»РѕРіРѕ С‡РёСЃР»Р°. РўСѓ С‡Р°СЃС‚СЊ number РєРѕС‚РѕСЂСѓСЋ РЅРµ СѓРґР°Р»РѕСЃСЊ РІРјРµСЃС‚РёС‚СЊ РјС‹ РѕСЃС‚Р°РІР»СЏРµРј РІ Р±СѓС„С„РµСЂРµ РґРѕ СЃР»РµРґСѓСЋС‰РµРіРѕ СЂР°Р·Р°
+	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,
+	// которые хранятся  буффере от прошлого числа. Ту часть number которую не удалось вместить мы оставляем в буффере до следующего раза
 	static uint8_t buffer = 0;
 	static int free_space_buffer = 8;
 	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
 	count_bites -= free_space_buffer;
 	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
-										 // РїРёС€РµРј РІ РІРµРєС‚РѕСЂ РѕСЃС‚Р°РІС€РёРµСЃСЏ Р‘РђР™РўР« С‡РёСЃР»Р° number
+										 // пишем в вектор оставшиеся БАЙТЫ числа number
 	while (count_bites > 7)
 	{
 		count_bites -= 8;
 		vect.push_back((uint8_t)(number >> (count_bites)));
 	}
-	// РїРёС€РµРј РІ Р±СѓС„С„РµСЂ (РІ РµРіРѕ СЃС‚Р°СЂС€РёРµ СЂР°Р·СЂСЏРґС‹) РѕСЃС‚Р°РІС€РёРµСЃСЏ Р‘РРўР« С‡РёСЃР»Р° number
+	// пишем в буффер (в его старшие разряды) оставшиеся БИТЫ числа number
 	buffer = number << (8 - count_bites);
 	free_space_buffer = 8 - count_bites;
 	return free_space_buffer;
@@ -48,7 +53,7 @@ uint32_t read_bites(ifstream &file, int count_bites, int &count_readed_bites)
 	{
 		result = buffer >> (8 - size_buffer);
 		count_readed_bites += size_buffer;
-		buffer = 0; // РµРіРѕ РІРѕРѕР±С‰Рµ-С‚Рѕ Рё РЅРµ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ РѕР±РЅСѓР»СЏС‚СЊ
+		buffer = 0; // его вообще-то и не обязательно обнулять
 		size_buffer = 0;
 		uint8_t temp;
 		int count_bytes = int((count_bites - count_readed_bites) / 8);
@@ -77,7 +82,7 @@ uint32_t read_bites(ifstream &file, int count_bites, int &count_readed_bites)
 			}
 		}
 	}
-	else if(size_buffer >= count_bites)
+	else if (size_buffer >= count_bites)
 	{
 		result = buffer >> (8 - count_bites);
 		buffer <<= count_bites;
@@ -90,46 +95,56 @@ uint32_t read_bites(ifstream &file, int count_bites, int &count_readed_bites)
 	}
 	return result;
 }
-void decompress(ifstream &input_file, ofstream &output_file)
+status_decoding decompress(ifstream &input_file, ofstream &output_file)
 {
-	map<uint32_t,string> dict;
-	map<string, uint32_t> inversed_dict;
+	map<uint32_t, string> dict;
 	string temp = "";
 	for (unsigned int i = 0; i < 256; i++)
 	{
 		temp += (char)i;
 		dict.insert(pair<uint32_t, string>((uint32_t)i, temp));
-		inversed_dict.insert(pair<string, uint32_t>(temp, (uint32_t)i));
 		temp = "";
 	}
 	int max_code_in_dict = 255;
 	int code_lenght = 9;
 	int count_readed_bites;
 	uint32_t readed_code = read_bites(input_file, code_lenght, count_readed_bites);
-	string prev_code = dict.at(readed_code);
-	output_file << prev_code;
+	output_file << dict.at(readed_code);
+	string prev = dict.at(readed_code);
 	bool flag_go_away_cicle = false;
+	bool flag_eror_in_decoding = false;
+	
+	
+	long unsigned int COUNT_READED_BITS = code_lenght;
+	
+	
 	while (!input_file.eof())
 	{
-		while (max_code_in_dict < (1<<code_lenght))
+		while (max_code_in_dict + 1 < (1 << code_lenght))
 		{
-			readed_code = read_bites(input_file, code_lenght, count_readed_bites);;
+			readed_code = read_bites(input_file, code_lenght, count_readed_bites);
+			COUNT_READED_BITS += code_lenght;
 			if (code_lenght == count_readed_bites)
 			{
-				if (inversed_dict.count(prev_code + dict.at(readed_code)))
+				if ((int)readed_code > max_code_in_dict + 1)
 				{
-					prev_code += dict.at(readed_code);
+					flag_go_away_cicle = true;
+					flag_eror_in_decoding = true;
+					break;
+				}
+				else if ((int)readed_code == max_code_in_dict + 1)
+				{
+					cout<<"Attention! Very hard to uncode! VANGUEM..."<<endl;
+					dict.insert(pair<uint32_t, string>(++max_code_in_dict, prev + prev[0]));
+					output_file << dict.at(readed_code);
+					prev = dict.at(readed_code);
 				}
 				else
 				{
-					dict.insert(pair<uint32_t, string>(++max_code_in_dict, prev_code + dict.at(readed_code)));
-					inversed_dict.insert(pair<string, uint32_t>(prev_code + dict.at(readed_code),max_code_in_dict));
-					cout << "Dict at readed code" << dict.at(readed_code) << endl;
-					cout << "Prev + dict.at(readed_code)" << prev_code + dict.at(readed_code) << endl;
-					prev_code = dict.at(readed_code);
+					dict.insert(pair<uint32_t, string>(++max_code_in_dict, prev + dict.at(readed_code)[0]));
+					output_file << dict.at(readed_code);
+					prev = dict.at(readed_code);
 				}
-				cout << dict.at(readed_code) << endl;
-				output_file << dict.at(readed_code);
 			}
 			else
 			{
@@ -142,8 +157,18 @@ void decompress(ifstream &input_file, ofstream &output_file)
 			break;
 		}
 		code_lenght++;
+		cout<<"Current code lenght: "<<code_lenght<<endl;
+		cout<<"Count readed bites: "<<COUNT_READED_BITS<<endl;
 	}
 	output_file.close();
+	if (flag_eror_in_decoding)
+	{
+		return error_decoding;
+	}
+	else
+	{
+		return successfully;
+	}
 }
 unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
 {
@@ -166,16 +191,13 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
 	uint32_t code_lenght = 9;
 	uint32_t count_readed_bytes = 2;
-	uint32_t j;
+	
+	long unsigned int count_writed_bits = 0;
+	
 	while (!input_file.eof())
 	{
-		j = 0;
-		uint32_t max = 1 << (code_lenght); // 2^(code_lenght - 1). ^ - pow, not XOR
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
-		// coding words using code_leght bites code
-		// С‚Р°РєРёРј РЅРµРјРЅРѕРіРѕ СЃР»РѕР¶РЅС‹Рј СЃРїРѕСЃРѕР±РѕРј СЏ РѕС‚СЃР»РµР¶РёРІР°СЋ РєРѕРіРґР° РЅСѓР¶РЅРѕ СѓРІРµР»РёС‡РёС‚СЊ РґР»РёРЅСѓ РєРѕРґР°. Р•СЃР»Рё РјС‹ РЅР°С‡РёРЅР°РµРј РєРѕРґРёСЂРѕРІР°С‚СЊ n-Р±РёС‚РЅС‹РјРё РєРѕРґР°РјРё, С‚Рѕ С‡РµСЂРµР· 2^(n-1) РґРѕР±Р°РІР»РµРЅРёР№ РІ СЃР»РѕРІР°СЂСЊ 
-		// РїСЂРёР№РґРµС‚СЊСЃСЏ СѓРІРµР»РёС‡РёС‚СЊ РґР»РёРЅСѓ РєРѕРґР°
-		while ((j < max) && (!input_file.eof()))
+		while ((max_code_in_dict < (1<<code_lenght)) && (!input_file.eof()))
 		{
 			if (dict.count(word + (char)current_symb)) // if word in dict
 			{
@@ -184,8 +206,8 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 			else
 			{
 				dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
-				j++;
 				write_to_vect(dict.at(word), code_lenght, result);
+				count_writed_bits += code_lenght;
 				word = (char)current_symb;
 			}
 			input_file.read((char*)&current_symb, 1);
@@ -193,11 +215,13 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		}
 		// starting use (code_lenght + 1) bites code
 		code_lenght++;
+		cout<<"Current code lenght: "<<code_lenght<<endl;
+		cout<<"Count writed bites: "<<count_writed_bits<<endl;
 	}
 	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
-	// РѕР±СЂР°Р±РѕС‚РєР° СЃРёС‚СѓР°С†РёРё РєРѕРіРґР° С„Р°Р№Р» Р·Р°РєРѕРЅС‡РёР»СЃСЏ РґРѕ С‚РѕРіРѕ РІРѕ РІСЂРµРјСЏ СЂР°Р±РѕС‚С‹ С†РёРєР»Р° while ((j < max) && (!input_file.eof())). РџСЂРё СЌС‚РѕРј РІС‹С…РѕРґСЏ РёР· С†РёРєР»Р° РјС‹ СѓРІРµР»РёС‡РёР»Рё code_lenght РЅР° 1
-	// С…РѕС‚СЏ РґРµР»Р°С‚СЊ СЌС‚РѕРіРѕ РЅРµ СЃР»РµРґРѕРІР°Р»Рѕ. РўР°Рє С‡С‚Рѕ РїСЂРѕСЃС‚Рѕ РѕС‚РЅРёРјР°РµРј РµРґРµРЅРёС†Сѓ РѕС‚ code_lenght. Р•С‰Рµ РѕРґРЅСѓ РµРґРµРЅРёС†Сѓ РјС‹ РґРѕР»Р¶РЅС‹ РѕС‚РЅСЏС‚СЊ Рё С‚Р°Рє.
-	if (j < (1 << (code_lenght - 2))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
+	// обработка ситуации когда файл закончился до того во время работы цикла while ((j < max) && (!input_file.eof())). При этом выходя из цикла мы увеличили code_lenght на 1
+	// хотя делать этого не следовало. Так что просто отнимаем еденицу от code_lenght. Еще одну еденицу мы должны отнять и так.
+	if (max_code_in_dict < (1<<(code_lenght-1))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
 	{
 		code_lenght--;
 	}
@@ -252,9 +276,6 @@ unsigned long int get_file_size(FILE* &input_file)
 }
 int main(int argvc, char* argv[])
 {
-	argvc = 3;
-	argv[1] = "-d";
-	argv[2] = "TOBEcoded";
 	if (argvc  > 1)
 	{
 		string mode_str = string(argv[1]);
@@ -304,8 +325,8 @@ int main(int argvc, char* argv[])
 				FILE *file = fopen(filename.c_str(), "rb");
 				if (!file)
 				{
-				printf("Cannot open file %s\n", filename.c_str());
-				return 1;
+					printf("Cannot open file %s\n", filename.c_str());
+					return 1;
 				}
 				ifstream input_file(filename.c_str(), ios::binary | ios::in);
 				if (!input_file.is_open())
@@ -329,6 +350,11 @@ int main(int argvc, char* argv[])
 			{
 				ifstream arhive(archive_name.c_str(), ios_base::binary);
 				// reading is file archived and filename
+				if (!arhive.is_open())
+				{
+					cout << "Can't open file " << archive_name << endl;
+					return 1;
+				}
 				bool is_archived;
 				arhive.read((char*)&is_archived, 1);
 				uint8_t count_chars_in_filename;
@@ -340,9 +366,30 @@ int main(int argvc, char* argv[])
 					arhive.read(&temp, 1);
 					filename += temp;
 				}
-				cout << "Generating file " << filename << endl;
+				cout << "Generating file " << filename <<" ..."<< endl;
 				ofstream output_file(filename.c_str(), ios_base::binary);
-				decompress(arhive, output_file);
+				if (is_archived)
+				{
+					status_decoding stat = decompress(arhive, output_file);
+					if (stat == error_decoding)
+					{
+						cout << "Error in decoding :(" << endl;
+					}
+					else
+					{
+						cout << "Data has been decoded :)"<<endl;
+					}
+				}
+				else
+				{
+					char temp;
+					while (arhive.read(&temp,1))
+					{
+						output_file.write(&temp, 1);
+					}
+					output_file.close();
+					cout << "Data has been writed to file :)" << endl;
+				}
 			}
 		}
 	}
