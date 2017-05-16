@@ -113,17 +113,11 @@ status_decoding decompress(ifstream &input_file, ofstream &output_file)
 	string prev = dict.at(readed_code);
 	bool flag_go_away_cicle = false;
 	bool flag_eror_in_decoding = false;
-	
-	
-	long unsigned int COUNT_READED_BITS = code_lenght;
-	
-	
 	while (!input_file.eof())
 	{
 		while (max_code_in_dict + 1 < (1 << code_lenght))
 		{
 			readed_code = read_bites(input_file, code_lenght, count_readed_bites);
-			COUNT_READED_BITS += code_lenght;
 			if (code_lenght == count_readed_bites)
 			{
 				if ((int)readed_code > max_code_in_dict + 1)
@@ -134,7 +128,6 @@ status_decoding decompress(ifstream &input_file, ofstream &output_file)
 				}
 				else if ((int)readed_code == max_code_in_dict + 1)
 				{
-					cout<<"Attention! Very hard to uncode! VANGUEM..."<<endl;
 					dict.insert(pair<uint32_t, string>(++max_code_in_dict, prev + prev[0]));
 					output_file << dict.at(readed_code);
 					prev = dict.at(readed_code);
@@ -157,8 +150,6 @@ status_decoding decompress(ifstream &input_file, ofstream &output_file)
 			break;
 		}
 		code_lenght++;
-		cout<<"Current code lenght: "<<code_lenght<<endl;
-		cout<<"Count readed bites: "<<COUNT_READED_BITS<<endl;
 	}
 	output_file.close();
 	if (flag_eror_in_decoding)
@@ -191,9 +182,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	input_file.read((char*)&current_symb, 1); //reading second byte from file
 	uint32_t code_lenght = 9;
 	uint32_t count_readed_bytes = 2;
-	
-	long unsigned int count_writed_bits = 0;
-	
 	while (!input_file.eof())
 	{
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
@@ -207,7 +195,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 			{
 				dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
 				write_to_vect(dict.at(word), code_lenght, result);
-				count_writed_bits += code_lenght;
 				word = (char)current_symb;
 			}
 			input_file.read((char*)&current_symb, 1);
@@ -215,8 +202,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		}
 		// starting use (code_lenght + 1) bites code
 		code_lenght++;
-		cout<<"Current code lenght: "<<code_lenght<<endl;
-		cout<<"Count writed bites: "<<count_writed_bits<<endl;
 	}
 	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
 	// обработка ситуации когда файл закончилс€ до того во врем€ работы цикла while ((j < max) && (!input_file.eof())). ѕри этом выход€ из цикла мы увеличили code_lenght на 1
