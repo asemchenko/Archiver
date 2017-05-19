@@ -170,7 +170,7 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 	while (!input_file.eof())
 	{
 		j = 0;
-		uint32_t max = 1 << (code_lenght); // 2^(code_lenght - 1). ^ - pow, not XOR
+		uint32_t max = 1 << (code_lenght - 1); // 2^(code_lenght - 1). ^ - pow, not XOR
 		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
 		// coding words using code_leght bites code
 		// таким немного сложным способом я отслеживаю когда нужно увеличить длину кода. Если мы начинаем кодировать n-битными кодами, то через 2^(n-1) добавлений в словарь 
