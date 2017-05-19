@@ -1,0 +1,377 @@
+//#include "stdafx.h"
+#include <fstream>
+#include <stdio.h>
+#include <cstdlib>
+#include <string>
+#include <stdlib.h>
+#include <iostream>
+#include <map>
+#include <vector>
+#include <stdint.h>
+#include <bitset>
+
+using namespace std;
+
+uint32_t value_from_buffer = 0;
+
+void decompress(ifstream &input_file);
+uint8_t move_from_buffer(bitset<8>, uint32_t, int, int, int);
+
+enum mode_type
+{
+	compressing = 1,
+	decompressing = 0,
+	error = 2
+};
+uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
+{
+	static uint8_t buffer = 0;
+	static int free_space_buffer = 8;
+	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
+	count_bites -= free_space_buffer;
+	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
+										
+	while (count_bites > 7)
+	{
+		count_bites -= 8;
+		vect.push_back((uint8_t)(number >> (count_bites)));
+	}
+
+	buffer = number << (8 - count_bites);
+	free_space_buffer = 8 - count_bites;
+	return free_space_buffer;
+}
+unsigned long int compress_file(ofstream &output_file, ifstream &input_file, unsigned long int size_input_data)
+{
+	map<string, uint32_t> dict;
+	// initialization dict
+	string temp = "";
+	for (unsigned int i = 0; i < 256; i++)
+	{
+		temp += (char)i;
+		dict.insert(pair<string, uint32_t>(temp, (uint32_t)i));
+		temp = "";
+	}
+	// compressing
+	uint32_t max_code_in_dict = 255;
+	vector<uint8_t> result;
+	uint8_t current_symb;
+	string word = "";
+	input_file.read((char*)&current_symb, 1); //reading first byte from file
+	word += (char)current_symb;
+	input_file.read((char*)&current_symb, 1); //reading second byte from file
+	uint32_t code_lenght = 9;
+	uint32_t count_readed_bytes = 2;
+	uint32_t j;
+	while (!input_file.eof())
+	{
+		j = 0;
+		uint32_t max = 1 << (code_lenght - 1); // 2^(code_lenght - 1). ^ - pow, not XOR
+		std::cout << "Left: " << size_input_data - count_readed_bytes << " bytes" << '\n';
+		// coding words using code_leght bites code
+	
+		while ((j < max) && (!input_file.eof()))
+		{
+			if (dict.count(word + (char)current_symb)) // if word in dict
+			{
+				word += (char)current_symb;
+			}
+			else
+			{
+				dict.insert(pair<string, uint32_t>((word + (char)current_symb), ++max_code_in_dict));
+				j++;
+				write_to_vect(dict.at(word), code_lenght, result);
+				word = (char)current_symb;
+			}
+			input_file.read((char*)&current_symb, 1);
+			count_readed_bytes++;
+		}
+		// starting use (code_lenght + 1) bites code
+		code_lenght++;
+	}
+	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
+	if (j < (1 << (code_lenght - 2))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
+	{
+		code_lenght--;
+	}
+	uint8_t free_bits_in_buffer = write_to_vect(dict.at(word), code_lenght, result);
+	if (free_bits_in_buffer < 8) // if buffer is not empty
+	{
+		write_to_vect(0, free_bits_in_buffer, result); // writing buffer to result
+	}
+	unsigned long long int size_compressed_data = result.size();
+	// writing coded data to archive
+	if (size_compressed_data <= size_input_data)
+	{
+		for (unsigned long int i = 0; i < result.size(); i++)
+		{
+			output_file.write((char*)&(result[i]), sizeof(result[i]));
+		}
+	}
+	else // writing non-coded data to archive
+	{
+		input_file.clear();
+		input_file.seekg(0);
+		char temp_byte;
+		input_file.read(&temp_byte, 1);
+		while (!input_file.eof())
+		{
+			output_file.write(&temp_byte, 1);
+			input_file.read(&temp_byte, 1);
+		}
+		output_file.seekp(ios::beg);
+		bool is_compressed = false;
+		output_file.write((char*)&is_compressed, sizeof(is_compressed)); // setting flag that we haven't compressing data
+	}
+	output_file.close();
+	std::cout << "\n\n" << '\n';
+	return size_compressed_data <= size_input_data ? size_compressed_data : size_input_data;
+}
+void write_string_to_file(string &input_str, ofstream &file)
+{
+	uint8_t len = input_str.length() + 1;
+	file.write((char*)&len, sizeof(len));
+	for (int i = 0; i < len; i++)
+	{
+		file.write(&(input_str.c_str()[i]), 1);
+	}
+}
+unsigned long int get_file_size(FILE* &input_file)
+{
+	fseek(input_file, 0, SEEK_END);
+	unsigned long int size_input_file = ftell(input_file);
+	fclose(input_file);
+	return size_input_file;
+}
+int main(int argvc, char* argv[])
+{
+	if (argvc  > 1)
+	{
+		string mode_str = string(argv[1]);
+		string archive_name = "";
+		string filename = "";
+		mode_type mode;
+		if ((mode_str == "--compress") || (mode_str == "-c"))
+		{
+			if (argvc == 4)
+			{
+				archive_name = string(argv[2]);
+				filename = string(argv[3]);
+				mode = compressing;
+			}
+			else
+			{
+				printf("Error! Error in count operands for mode --compress\n");
+				mode = error;
+			}
+		}
+		else if ((mode_str == "--decompress") || (mode_str == "-d"))
+		{
+			if (argvc == 3)
+			{
+				archive_name = string(argv[2]);
+				mode = decompressing;
+			}
+			else
+			{
+				printf("Error in count operands for mode --decompress\n");
+				mode = error;
+			}
+		}
+		else
+		{
+			printf("Error! There is no mode: %s\n", mode_str.c_str());
+			mode = error;
+		}
+		
+		if (mode == error)
+		{
+			return 1;
+		}
+		else
+		{
+			if (mode == compressing)
+			{
+				FILE *file = fopen(filename.c_str(), "rb");
+				if (!file)
+				{
+					printf("Cannot open file %s\n", filename.c_str());
+					return 1;
+				}
+				unsigned long int size_input_file = get_file_size(file);
+				ifstream input_file(filename.c_str(), ios::binary | ios::in);
+				if (!input_file.is_open())
+				{
+					cout << "Error! File " << filename << " not found" << endl;
+				}
+				ofstream archive_file(archive_name.c_str(), ios::binary | ios::out);
+				bool is_compressed = true;
+				archive_file.write((char*)&is_compressed, sizeof(is_compressed));
+				write_string_to_file(filename, archive_file);
+				printf("Starting compressing ...\n");
+				unsigned long int size_data = compress_file(archive_file, input_file, size_input_file);
+				printf("Data have been compressed\n");
+				cout << "Size input file: " << size_input_file << endl;
+				cout << "Size archive:    " << size_data + 3 + filename.length() << " bytes" << endl;
+				cout << "Compression koeficient: " << (((float)size_input_file) / (size_data + 3 + filename.length())) << endl;
+				input_file.close();
+			}
+			else if(mode == decompressing)
+			{
+				ifstream archive_file(archive_name.c_str(), ios::binary | ios::in);
+				if(!archive_file.is_open())
+					cout<<"Error! File "<<archive_name<<" not found!"<<endl;
+				else
+				{
+					printf("Starting decompressing ...\n");
+					decompress(archive_file);
+					printf("Data have been decompressed\n");
+				}	
+			}
+
+		}
+	}
+	else
+	{
+		printf("Error, no arguments\n");
+	}
+	return 0;
+}
+
+void decompress(ifstream &file)
+{
+	uint8_t cur;
+	file.read((char*)&cur, 1); // reading first byte from file - exists archive or not exists
+	file.read((char*)&cur, 1); // second byte - quantity symbols of the file 
+	uint8_t *filename = new uint8_t[cur];
+	for(uint8_t i=0; i<cur; i++) 
+	{
+		file.read((char*)&cur, 1);
+		filename[i] = cur;
+	}
+	// create dictionary
+	map<uint32_t, string> dict;
+	string temp = "";
+	for (unsigned int i = 0; i < 256; i++)
+	{
+		temp += (char)i;
+		dict.insert(pair<uint32_t, string>((uint32_t)i, temp));
+		temp = "";
+	}
+	//starting decompressing
+	vector<uint32_t> answer;
+	bitset<8> buffer;
+	uint32_t max_code_in_dict = 255;
+	uint8_t current_symbol;
+	uint32_t value_for_word;
+	uint32_t code_lenght = 9;
+	uint32_t j;
+	string word = "";
+	
+	int code_l = 9;
+	int bits_to_code_l = 9;
+	int current_symbol_in_buffer = 7;
+	
+	bits_to_code_l = 1;
+	file.read((char*)&current_symbol, 1);
+	value_for_word = current_symbol;
+	file.read((char*)&current_symbol, 1);
+	buffer = current_symbol;
+	value_for_word = value_for_word << 1;
+	if(buffer[current_symbol_in_buffer] == 1) value_for_word = value_for_word ^ 1;
+	current_symbol_in_buffer--;
+	bits_to_code_l--;
+	
+	while(!file.eof())
+	{
+		j = 0;
+		uint32_t max = 1 << (code_lenght - 1); 
+		while ((j < max) && (!file.eof()))
+		{
+			if(bits_to_code_l == 0)
+			{
+				answer.insert(answer.end(), value_for_word);
+				
+				if(value_for_word < 256)
+				{
+					word+=(char)value_for_word;
+					if(word == dict.at(value_for_word))
+					{
+						
+					}
+					else 
+					{
+						dict.insert(pair<uint32_t, string>(++max_code_in_dict, word));
+						cout<<word<<" in dictionary number "<<max_code_in_dict<<endl;
+						word = (char)value_for_word;
+					}
+				}
+				else
+				{
+					string str = dict.at(value_for_word);
+					//cout<<value_for_word<<endl;
+					//cout<<"str "<<str<<endl;
+					//cout<<"Word cycle 1 "<<word<<endl;
+					for(int i=0; i<str.size(); i++)
+					{
+						word+=str[i];
+						//cout<<"Word cycle "<<word<<endl;
+						bool check = false;
+						for(int j=0; j<dict.size(); j++)
+						{
+							if(word == dict.at(j)) {check = true;}
+						}
+						if(word == dict.at(value_for_word) || check == true)
+						{
+						
+						}
+						else 
+						{
+							dict.insert(pair<uint32_t, string>(++max_code_in_dict, word));
+							cout<<word<<" in dictionary number "<<max_code_in_dict<<endl;
+							word = str[i];
+						}
+					}
+					
+				}
+				value_for_word = 0;
+				bits_to_code_l = code_l;
+			}
+			else // bits_to_code_l > 0
+			{
+				if(current_symbol_in_buffer != -1)
+				{
+					while(current_symbol_in_buffer > -1 && bits_to_code_l > 0)
+					{
+						value_for_word = value_for_word << 1;
+						if(buffer[current_symbol_in_buffer] == 1) value_for_word = value_for_word ^ 1;
+						bits_to_code_l--;
+						current_symbol_in_buffer--;
+					}
+					
+					if(bits_to_code_l > 0)
+					{
+						file.read((char*)&current_symbol, 1);
+						buffer = current_symbol;
+						current_symbol_in_buffer = 7;
+					}
+				}
+				else 
+				{
+					file.read((char*)&current_symbol, 1);
+					buffer = current_symbol;
+					current_symbol_in_buffer = 7;
+				}
+			}
+		}
+		code_lenght++;
+	}
+	//cout<<"wofhow"<<endl;
+	ofstream first_file("qaz.pdf");
+	for(int i=0; i<answer.size(); i++)
+		first_file<<dict.at(answer[i]);
+
+
+	
+	delete [] filename;
+}
