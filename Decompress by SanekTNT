@@ -367,7 +367,7 @@ void decompress(ifstream &file)
 		code_lenght++;
 	}
 	//cout<<"wofhow"<<endl;
-	ofstream first_file("qaz.pdf");
+	ofstream first_file("qaz.txt");
 	for(int i=0; i<answer.size(); i++)
 		first_file<<dict.at(answer[i]);
 
