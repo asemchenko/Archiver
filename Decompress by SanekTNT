@@ -243,12 +243,13 @@ void decompress(ifstream &file)
 	uint8_t cur;
 	file.read((char*)&cur, 1); // reading first byte from file - exists archive or not exists
 	file.read((char*)&cur, 1); // second byte - quantity symbols of the file 
-	uint8_t *filename = new uint8_t[cur];
+	string file_name = "";
 	for(uint8_t i=0; i<cur; i++) 
 	{
 		file.read((char*)&cur, 1);
-		filename[i] = cur;
+		file_name+=cur;
 	}
+	cout<<file_name<<endl;
 	// create dictionary
 	map<uint32_t, string> dict;
 	string temp = "";
@@ -258,7 +259,7 @@ void decompress(ifstream &file)
 		dict.insert(pair<uint32_t, string>((uint32_t)i, temp));
 		temp = "";
 	}
-	//starting decompressing
+	//decompressing
 	vector<uint32_t> answer;
 	bitset<8> buffer;
 	uint32_t max_code_in_dict = 255;
@@ -267,11 +268,11 @@ void decompress(ifstream &file)
 	uint32_t code_lenght = 9;
 	uint32_t j;
 	string word = "";
-	
+	//values for buffer
 	int code_l = 9;
 	int bits_to_code_l = 9;
 	int current_symbol_in_buffer = 7;
-	
+	//starting decompressing
 	bits_to_code_l = 1;
 	file.read((char*)&current_symbol, 1);
 	value_for_word = current_symbol;
@@ -285,13 +286,12 @@ void decompress(ifstream &file)
 	while(!file.eof())
 	{
 		j = 0;
-		uint32_t max = 1 << (code_lenght - 1); 
+		uint32_t max = 1 << (code_lenght - 1);
 		while ((j < max) && (!file.eof()))
 		{
 			if(bits_to_code_l == 0)
 			{
 				answer.insert(answer.end(), value_for_word);
-				
 				if(value_for_word < 256)
 				{
 					word+=(char)value_for_word;
@@ -302,6 +302,7 @@ void decompress(ifstream &file)
 					else 
 					{
 						dict.insert(pair<uint32_t, string>(++max_code_in_dict, word));
+						j++;
 						cout<<word<<" in dictionary number "<<max_code_in_dict<<endl;
 						word = (char)value_for_word;
 					}
@@ -317,17 +318,18 @@ void decompress(ifstream &file)
 						word+=str[i];
 						//cout<<"Word cycle "<<word<<endl;
 						bool check = false;
-						for(int j=0; j<dict.size(); j++)
+						for(int k=0; k<dict.size(); k++)
 						{
-							if(word == dict.at(j)) {check = true;}
+							if(word == dict.at(k)) {check = true;}
 						}
 						if(word == dict.at(value_for_word) || check == true)
 						{
-						
+							
 						}
 						else 
 						{
 							dict.insert(pair<uint32_t, string>(++max_code_in_dict, word));
+							j++;
 							cout<<word<<" in dictionary number "<<max_code_in_dict<<endl;
 							word = str[i];
 						}
@@ -341,7 +343,7 @@ void decompress(ifstream &file)
 			{
 				if(current_symbol_in_buffer != -1)
 				{
-					while(current_symbol_in_buffer > -1 && bits_to_code_l > 0)
+					while((current_symbol_in_buffer > -1) && (bits_to_code_l > 0))
 					{
 						value_for_word = value_for_word << 1;
 						if(buffer[current_symbol_in_buffer] == 1) value_for_word = value_for_word ^ 1;
@@ -349,12 +351,14 @@ void decompress(ifstream &file)
 						current_symbol_in_buffer--;
 					}
 					
-					if(bits_to_code_l > 0)
+					
+					/*if(current_symbol_in_buffer == -1)
 					{
 						file.read((char*)&current_symbol, 1);
 						buffer = current_symbol;
 						current_symbol_in_buffer = 7;
 					}
+					*/
 				}
 				else 
 				{
@@ -365,13 +369,21 @@ void decompress(ifstream &file)
 			}
 		}
 		code_lenght++;
+		//bits_to_code_l++;
+		//code_l++;
+	}
+	if (j < (1 << (code_lenght - 2))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
+	{
+		code_lenght--;
 	}
 	//cout<<"wofhow"<<endl;
-	ofstream first_file("qaz.txt");
+	ofstream first_file(file_name.c_str());
 	for(int i=0; i<answer.size(); i++)
 		first_file<<dict.at(answer[i]);
 
 
 	
-	delete [] filename;
+}
+
+
 }
