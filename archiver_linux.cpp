@@ -1,7 +1,3 @@
-// archiver.cpp: определяет точку входа для консольного приложения.
-//
-
-//#include "stdafx.h"
 #include <fstream>
 #include <stdio.h>
 #include <cstdlib>
@@ -25,20 +21,17 @@ enum mode_type
 };
 uint8_t write_to_vect(uint32_t number, int count_bites, vector<uint8_t> &vect)
 {
-	// эта функция переразбивает число number на биты так чтобы можно было записать его в вектор vect вместе с остатками битов,
-	// которые хранятся  буффере от прошлого числа. Ту часть number которую не удалось вместить мы оставляем в буффере до следующего раза
 	static uint8_t buffer = 0;
 	static int free_space_buffer = 8;
 	uint8_t high_shift = number >> (count_bites - free_space_buffer); // getting high free_space_buffer bites from number
 	count_bites -= free_space_buffer;
 	vect.push_back(buffer | high_shift); // writing buffer bits + high_shift bits to vect
-										 // пишем в вектор оставшиеся БАЙТЫ числа number
+										 
 	while (count_bites > 7)
 	{
 		count_bites -= 8;
 		vect.push_back((uint8_t)(number >> (count_bites)));
 	}
-	// пишем в буффер (в его старшие разряды) оставшиеся БИТЫ числа number
 	buffer = number << (8 - count_bites);
 	free_space_buffer = 8 - count_bites;
 	return free_space_buffer;
@@ -53,7 +46,7 @@ uint32_t read_bites(ifstream &file, int count_bites, int &count_readed_bites)
 	{
 		result = buffer >> (8 - size_buffer);
 		count_readed_bites += size_buffer;
-		buffer = 0; // его вообще-то и не обязательно обнулять
+		buffer = 0;
 		size_buffer = 0;
 		uint8_t temp;
 		int count_bytes = int((count_bites - count_readed_bites) / 8);
@@ -205,8 +198,6 @@ unsigned long int compress_file(ofstream &output_file, ifstream &input_file, uns
 		cout << "Current code lenght: " << code_lenght << endl;
 	}
 	// if file ended, but we should use (code_lenght-2) bites code yet. We must'nt increment code_lenght, but we make it
-	// обработка ситуации когда файл закончился до того во время работы цикла while ((j < max) && (!input_file.eof())). При этом выходя из цикла мы увеличили code_lenght на 1
-	// хотя делать этого не следовало. Так что просто отнимаем еденицу от code_lenght. Еще одну еденицу мы должны отнять и так.
 	if (max_code_in_dict < (1<<(code_lenght-1))) // j < 2^(code_lenght - 2). ^ - pow, not XOR
 	{
 		code_lenght--;
